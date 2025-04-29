@@ -1,5 +1,5 @@
 # AI Startup Investment Evaluation Agent
-본 프로젝트는 인공지능 스타트업에 대한 투자 가능성을 자동으로 평가하는 에이전트를 설계하고 구현한 실습 프로젝트입니다.
+본 프로젝트는 AI 활용 스타트업에 대한 투자 가능성을 자동으로 평가하는 에이전트를 설계하고 구현한 실습 프로젝트입니다.
 
 ## Overview
 
@@ -38,5 +38,9 @@
 └── README.md
 
 ## Contributors 
-- 김철수 : Prompt Engineering, Agent Design 
-- 최영희 : PDF Parsing, Retrieval Agent 
+- 배진환 : 
+- 김경아 : 
+- 구동빈 :
+- 박정의 :
+- 정현섭 :
+- 이원행 :
