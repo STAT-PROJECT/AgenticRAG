@@ -8,6 +8,9 @@ from langchain.chains import LLMChain
 from dotenv import load_dotenv
 import chromadb
 
+# AgentState 타입 정의
+AgentState = Dict[str, Any]
+
 # 1) .env 파일에서 OpenAI API 키 로드
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -22,7 +25,7 @@ os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 llm = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0.2)
 
 # 3) ChromaDB 초기화 및 컬렉션 접근
-client = chromadb.PersistentClient(path="./chroma_db")
+client = chromadb.PersistentClient(path="./chroma_store")
 collection = client.get_or_create_collection("company_data")
 
 # 4) 특정 회사의 모든 에이전트 정보 조회 함수
@@ -160,43 +163,46 @@ hold_chain = LLMChain(llm=llm, prompt=hold_prompt)
 
 
 # 7) 보고서 생성 에이전트 정의
-def report_generation_agent(
-    company_name: str
-) -> List[Dict[str, str]]:
+def report_generation_agent(state: AgentState) -> AgentState:
     """
     ChromaDB에서 특정 회사명으로 필터링한 데이터를 기반으로
     투자 보고서를 생성합니다.
     """
+    company_name = state["selected_startup"]["name"]
+    
     # ChromaDB에서 회사 데이터 가져오기
     company_data = get_company_data(company_name)
     
-    if not company_data:
-        return [{"name": company_name, "report": f"{company_name}에 대한 데이터가 없습니다."}]
-    
     results = []
-    
-    # 투자 결정에 따른 보고서 생성
-    if company_data.get("decision") == "투자추천":
-        report = investment_chain.run(
-            name=company_data.get("name", ""),
-            revenue=company_data.get("revenue", ""),
-            growth=company_data.get("growth", ""),
-            investment=company_data.get("investment", ""),
-            employees=str(company_data.get("employees", "")),
-            patents=str(company_data.get("patents", "")),
-            news=company_data.get("news", ""),
-            tech_summary=company_data.get("tech_summary", ""),
-            reasoning=company_data.get("reasoning", "")
-        )
-        results.append({"name": company_data["name"], "report": report})
-    else:
-        # 투자보류 시 해당 회사에 대한 보류 보고서 생성
-        company_hold_reasons = f"- {company_data['name']}: {company_data.get('reasoning','')}"
-        report = hold_chain.run(company_hold_reasons=company_hold_reasons)
-        results.append({"name": f"{company_name} 투자보류 보고서", "report": report})
-    
-    return results
 
+    if not company_data:
+        report = f"{company_name}에 대한 데이터가 없습니다."
+    else:
+        # 투자 결정에 따른 보고서 생성
+        if company_data.get("decision") == "투자추천":
+            report = investment_chain.run(
+                name=company_data.get("name", ""),
+                revenue=company_data.get("revenue", ""),
+                growth=company_data.get("growth", ""),
+                investment=company_data.get("investment", ""),
+                employees=str(company_data.get("employees", "")),
+                patents=str(company_data.get("patents", "")),
+                news=company_data.get("news", ""),
+                tech_summary=company_data.get("tech_summary", ""),
+                reasoning=company_data.get("reasoning", "")
+            )
+        else:
+            # 투자보류 시 해당 회사에 대한 보류 보고서 생성
+            company_hold_reasons = f"- {company_data['name']}: {company_data.get('reasoning','')}"
+            report = hold_chain.run(company_hold_reasons=company_hold_reasons)
+            results.append({"name": f"{company_name} 투자보류 보고서", "report": report})
+    
+    return {
+        **state,
+        "report": report,
+        "current_step": "보고서_생성",
+        "messages": state["messages"] + [{"role": "system", "content": f"{company_name} 보고서 생성 완료"}]
+    }
 
 # 8) 여러 회사 데이터를 처리하여 종합 보고서 생성
 def generate_summary_report(
