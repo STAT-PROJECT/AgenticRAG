@@ -106,7 +106,11 @@ def get_tavily_market_data(company_name: str) -> str:
 def generate_market_analysis(company_name: str, tavily_results: str) -> str:
     """
     OpenAI API를 직접 사용하여 시장 분석을 생성합니다.
+    정보가 충분하지 않을 경우 명확히 표시합니다.
     """
+    # 검색 결과 품질 확인
+    has_sufficient_data = check_search_quality(tavily_results)
+    
     prompt = f"""
 다음은 {company_name} 회사에 대해 수집된 정보입니다.
 
@@ -131,24 +135,58 @@ def generate_market_analysis(company_name: str, tavily_results: str) -> str:
 ## 위협 요소
 [시장에서 직면한 주요 도전 과제나 위협 요인]
 
-답변은 구체적이고 데이터에 기반하여 작성해 주세요.
-정보가 불충분하거나 불확실한 부분은 그렇다고 명시해 주세요.
+중요 지침:
+1. 답변은 반드시 검색 결과에서 확인된 정보만 사용하세요.
+2. 특정 정보가 검색 결과에 명확히 나타나지 않으면 반드시 "정보 없음" 또는 "검색 결과에서 확인할 수 없음"이라고 명시하세요.
+3. 추측하거나 일반적인 내용으로 빈 칸을 채우지 마세요.
+4. 각 섹션에서 최소 하나 이상의 구체적인 출처(예: '00 기사에 따르면')를 포함하세요.
+
+불확실하거나 정보가 부족한 경우에는 반드시 그 사실을 명시해야 합니다.
 """
 
     try:
+        # 데이터 충분성에 따른 시스템 메시지 조정
+        system_message = "당신은 시장 분석 전문가로서 정확하고 객관적인 분석을 제공합니다."
+        if not has_sufficient_data:
+            system_message += " 정보가 불충분한 경우 추측을 피하고 반드시 '정보 없음'을 명시해야 합니다."
+        
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "당신은 시장 분석 전문가로서 정확하고 객관적인 분석을 제공합니다."},
+                {"role": "system", "content": system_message},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.2
+            temperature=0.1  # 더 결정적인 응답을 위해 온도 낮춤
         )
         return response.choices[0].message.content
     except Exception as e:
         print(f"OpenAI API 호출 중 오류 발생: {e}")
         return f"분석 중 오류 발생: {str(e)}"
 
+def check_search_quality(search_results: str) -> bool:
+    """
+    검색 결과의 품질을 평가하여 충분한 정보가 있는지 확인합니다.
+    """
+    # 검색 응답 길이 확인
+    if len(search_results) < 1000:  # 임의의 기준
+        return False
+    
+    # 오류 메시지 확인
+    if "검색 오류" in search_results and search_results.count("검색 오류") > 3:
+        return False
+        
+    # 실질적인 정보 포함 여부 확인 (JSON 응답에 의미있는 내용이 있는지)
+    meaningful_data_markers = [
+        '"answer":', 
+        '"content":', 
+        '"snippet":'
+    ]
+    
+    meaningful_data_count = sum(1 for marker in meaningful_data_markers if marker in search_results)
+    if meaningful_data_count < 2:  # 최소 두 개 이상의 의미 있는 데이터 마커가 있어야 함
+        return False
+    
+    return True
 
 def analyze_market_position(company_name: str) -> Dict[str, Any]:
     """
@@ -159,21 +197,27 @@ def analyze_market_position(company_name: str) -> Dict[str, Any]:
     # Tavily 검색 결과
     tavily_results = get_tavily_market_data(company_name)
     
+    # 검색 결과 품질 평가
+    has_sufficient_data = check_search_quality(tavily_results)
+    if not has_sufficient_data:
+        print(f"[시장 분석 에이전트] ⚠️ {company_name} 기업에 대한 검색 결과가 충분하지 않습니다. 제한된 분석이 수행됩니다.")
+    
     # OpenAI를 사용한 종합 분석
     market_analysis = generate_market_analysis(company_name, tavily_results)
     
     print(f"[시장 분석 에이전트] {company_name} 기업 시장 분석 완료")
     
     # 결과 저장
-    save_market_analysis(company_name, market_analysis)
+    save_market_analysis(company_name, market_analysis, has_sufficient_data)
     
     return {
         "company_name": company_name,
-        "market_analysis": market_analysis
+        "market_analysis": market_analysis,
+        "has_sufficient_data": has_sufficient_data
     }
 
 
-def save_market_analysis(company_name: str, analysis: str) -> None:
+def save_market_analysis(company_name: str, analysis: str, has_sufficient_data: bool = True) -> None:
     """
     시장 분석 결과를 ChromaDB에 저장합니다.
     """
@@ -184,19 +228,40 @@ def save_market_analysis(company_name: str, analysis: str) -> None:
         # 메타데이터 구성
         metadata = {
             "agent_type": "market_agent",
-            "company_name": company_name
+            "company_name": company_name,
+            "has_sufficient_data": str(has_sufficient_data)  # 데이터 충분성 저장
         }
         
         # 섹션별 메타데이터 추가
         for section in sections:
             if "시장 포지셔닝" in section:
                 metadata["market_position"] = section[:500] if len(section) > 500 else section
+                # 정보 없음 표시 확인
+                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
+                    metadata["has_market_position_data"] = "false"
+                else:
+                    metadata["has_market_position_data"] = "true"
+                    
             elif "주요 경쟁사" in section:
                 metadata["competitors"] = section[:500] if len(section) > 500 else section
+                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
+                    metadata["has_competitors_data"] = "false"
+                else:
+                    metadata["has_competitors_data"] = "true"
+                    
             elif "경쟁 우위 요소" in section:
                 metadata["competitive_advantages"] = section[:500] if len(section) > 500 else section
+                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
+                    metadata["has_advantages_data"] = "false"
+                else:
+                    metadata["has_advantages_data"] = "true"
+                    
             elif "시장 점유율" in section:
                 metadata["market_share"] = section[:500] if len(section) > 500 else section
+                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
+                    metadata["has_market_share_data"] = "false"
+                else:
+                    metadata["has_market_share_data"] = "true"
         
         # ChromaDB에 저장
         collection.add(
@@ -223,6 +288,6 @@ if __name__ == "__main__":
     print(result["market_analysis"])
     
     # 파일로 저장 (선택사항)
-    with open(f"{test_company}_market_analysis.txt", "w", encoding="utf-8") as f:
+    with open(f"./market_analysis_output/{test_company}_market_analysis.txt", "w", encoding="utf-8") as f:
         f.write(result["market_analysis"])
     print(f"\n결과가 {test_company}_market_analysis.txt 파일에 저장되었습니다.")
