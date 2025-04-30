@@ -24,7 +24,7 @@
 | LLM        | GPT-4o-mini via OpenAI API   |
 | VectorDB   | ChromaDB                     |
 |임베딩      | HuggingFace (ko-sroberta-multitask)|
-| Data       | PDF OCR(PyMuPDFLoader), Web Search(Tavily) |
+| Data       | Playwright, PDF OCR(PyMuPDFLoader), Web Search(Tavily) |
 
 ## Agents
 
@@ -80,6 +80,14 @@
 └────────────────────────┘                        
 ```
 
+## Data Flow
+1. 스타트업 크롤링 → 데이터 수집 → 벡터 저장소
+2. 정보 추출 → 구조화 → 벡터 저장소
+3. 기술 분석 → 웹 검색 → 요약 → 벡터 저장소
+4. 시장 분석 → 경쟁사 비교 → 벡터 저장소
+5. 투자 판단 → 종합 분석 → 의사결정
+6. 보고서 생성 → 마크다운 문서
+
 ## Vector Database Schema
 
 ChromaDB를 활용한 메타데이터 구조:
@@ -88,10 +96,24 @@ ChromaDB를 활용한 메타데이터 구조:
     - company_name: 스타트업 이름 (모든 문서 공통)
     - agent_type: 에이전트 유형 (startup_agent, tech_agent, market_agent, invest_agent)
 
-- **startup_agent**: 기업 기본 정보 (PDF 존재 여부, 텍스트 경로 등)
-- **tech_agent**: 기술 요약, 신뢰도 점수, 참조 URL
-- **market_agent**: 시장 분석 결과, 충분성 여부, 경쟁사 정보
-- **invest_agent**: 투자 판단 결과 (투자추천/투자보류), 판단 근거
+에이전트별 메타데이터:
+1. startup_agent:
+    - status: PDF 존재 여부 (0/1)
+    - text_path: 추출된 텍스트 파일 경로
+    - reason: PDF 없는 경우 이유 기록
+2. tech_agent:
+    - summary: 기술 요약 정보
+    - confidence: 정보 신뢰도 점수 (0.0-1.0)
+    - urls: 참조된 정보 소스 URL들
+
+3. market_agent:
+    - content_type: 분석 유형 (full_analysis, summary 등)
+    - has_sufficient_data: 충분한 시장 데이터 유무
+    - competitors: 주요 경쟁사 목록
+
+4. invest_agent:
+    - decision: 투자 결정 (투자추천/투자보류)
+    - summary: 결정 요약 근거
 
 ## Directory Structure
 
