@@ -24,7 +24,7 @@ os.environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.2)
 
 # ChromaDB 초기화
-client = chromadb.PersistentClient(path="./chroma_db")
+client = chromadb.PersistentClient(path="./chroma_store")
 collection = client.get_or_create_collection("company_data")
 
 

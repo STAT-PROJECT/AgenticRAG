@@ -32,7 +32,7 @@ hf_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
 )
 
 # ChromaDB 초기화 (임베딩 함수 지정)
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+chroma_client = chromadb.PersistentClient(path="./chroma_store")
 collection = chroma_client.get_or_create_collection(
     name="company_data",
     embedding_function=hf_ef
@@ -219,58 +219,70 @@ def analyze_market_position(company_name: str) -> Dict[str, Any]:
 
 def save_market_analysis(company_name: str, analysis: str, has_sufficient_data: bool = True) -> None:
     """
-    시장 분석 결과를 ChromaDB에 저장합니다.
+    시장 분석 결과를 섹션별로 청크로 나누어 ChromaDB에 저장합니다.
     """
     try:
-        # 분석 결과 내용 중 일부를 메타데이터로 추출
+        # 분석 결과를 섹션으로 분할
         sections = analysis.split("##")
         
-        # 메타데이터 구성
-        metadata = {
+        # 첫 번째 빈 섹션 제거
+        if sections and not sections[0].strip():
+            sections = sections[1:]
+            
+        documents = []
+        metadatas = []
+        ids = []
+        
+        # 전체 분석 결과도 하나의 문서로 저장 (통합 검색용)
+        documents.append(analysis)
+        metadatas.append({
             "agent_type": "market_agent",
             "company_name": company_name,
-            "has_sufficient_data": str(has_sufficient_data)  # 데이터 충분성 저장
-        }
+            "content_type": "full_analysis",
+            "has_sufficient_data": str(has_sufficient_data)
+        })
+        ids.append(f"market_analysis_{company_name}_full")
         
-        # 섹션별 메타데이터 추가
-        for section in sections:
-            if "시장 포지셔닝" in section:
-                metadata["market_position"] = section[:500] if len(section) > 500 else section
-                # 정보 없음 표시 확인
-                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
-                    metadata["has_market_position_data"] = "false"
-                else:
-                    metadata["has_market_position_data"] = "true"
-                    
-            elif "주요 경쟁사" in section:
-                metadata["competitors"] = section[:500] if len(section) > 500 else section
-                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
-                    metadata["has_competitors_data"] = "false"
-                else:
-                    metadata["has_competitors_data"] = "true"
-                    
-            elif "경쟁 우위 요소" in section:
-                metadata["competitive_advantages"] = section[:500] if len(section) > 500 else section
-                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
-                    metadata["has_advantages_data"] = "false"
-                else:
-                    metadata["has_advantages_data"] = "true"
-                    
-            elif "시장 점유율" in section:
-                metadata["market_share"] = section[:500] if len(section) > 500 else section
-                if "정보 없음" in section.lower() or "확인할 수 없음" in section.lower():
-                    metadata["has_market_share_data"] = "false"
-                else:
-                    metadata["has_market_share_data"] = "true"
+        # 각 섹션을 별도의 청크로 저장
+        for i, section in enumerate(sections):
+            if not section.strip():
+                continue
+                
+            # 섹션 제목과 내용 분리
+            lines = section.strip().split("\n", 1)
+            if len(lines) < 2:
+                continue
+                
+            section_title = lines[0].strip()
+            section_content = lines[1].strip() if len(lines) > 1 else ""
+            
+            # 정보 없음 여부 확인
+            has_info = "정보 없음" not in section_content.lower() and "확인할 수 없음" not in section_content.lower()
+            
+            # 섹션별 청크 생성
+            section_type = section_title.lower().replace(" ", "_")
+            
+            # 문서, 메타데이터, ID 추가
+            documents.append(f"{section_title}\n{section_content}")
+            metadatas.append({
+                "agent_type": "market_agent", 
+                "company_name": company_name,
+                "content_type": "section",
+                "section_title": section_title,
+                "section_type": section_type,
+                "section_index": str(i),
+                "has_info": str(has_info)
+            })
+            ids.append(f"market_analysis_{company_name}_{section_type}")
         
         # ChromaDB에 저장
         collection.add(
-            documents=[analysis],
-            metadatas=[metadata],
-            ids=[f"market_analysis_{company_name}"]
+            documents=documents,
+            metadatas=metadatas,
+            ids=ids
         )
         
-        print(f"[시장 분석 에이전트] {company_name} 기업 시장 분석 결과 저장 완료")
+        print(f"[시장 분석 에이전트] {company_name} 기업 시장 분석 결과 {len(documents)}개 청크로 저장 완료")
     except Exception as e:
         print(f"시장 분석 결과 저장 중 오류 발생: {e}")
 
