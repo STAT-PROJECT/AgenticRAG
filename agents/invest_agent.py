@@ -9,6 +9,14 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 
+# AgentState 타입 정의
+class AgentState(TypedDict):
+    selected_startup: Dict[str, Any]
+    investment_decision: Optional[str]
+    all_investment_decisions: Dict[str, str]
+    processed_startups_count: int
+    messages: List[Dict[str, str]]
+
 # .env 파일에서 OpenAI API 키 로드
 load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -81,31 +89,33 @@ def get_tech_info(company_name: str) -> Dict[str, Any]:
         n_results=5
     )
     
-    tech_info = {
-        "tech_summary": "",
-        "core_technology": "",
-        "market_position": "",
-        "competitors": "",
-        "tech_advantages": ""
-    }
+    tech_info = {}
     
-    if results["documents"] and len(results["documents"]) > 0:
-        # 중첩 리스트 처리 - results["documents"]가 리스트의 리스트 형태인 경우
-        documents = []
-        for doc_item in results["documents"]:
-            if isinstance(doc_item, list):
-                documents.extend(doc_item)  # 내부 리스트의 항목들을 추가
-            else:
-                documents.append(doc_item)  # 단일 문자열인 경우 직접 추가
-        
-        tech_info["tech_summary"] = "\n".join(documents)
-        
-        # 메타데이터에서 추가 기술 정보 추출
-        for metadata in results["metadatas"]:
-            for key in tech_info.keys():
-                if key in metadata and metadata[key] is not None:
-                    tech_info[key] = metadata[key]
+    if not results["documents"]:
+        return {"tech_summary": "기술 정보 없음", "tech_rating": "정보 없음"}
     
+    # 중첩된 리스트 처리
+    flattened_documents = []
+    for doc_list in results["documents"]:
+        if isinstance(doc_list, list):
+            flattened_documents.extend(doc_list)  # 리스트인 경우 풀어서 추가
+        else:
+            flattened_documents.append(doc_list)  # 문자열인 경우 그대로 추가
+       
+    tech_info["tech_summary"] = "\n".join(flattened_documents)
+    
+    # 메타데이터에서 기술 등급 추출 (기존 코드 유지)
+    tech_rating = "기술 등급 정보 없음"
+    for meta in results.get("metadatas", []):
+        if isinstance(meta, list):
+            for m in meta:
+                if m.get("tech_rating"):
+                    tech_rating = m.get("tech_rating")
+                    break
+        elif meta.get("tech_rating"):
+            tech_rating = meta.get("tech_rating")
+ 
+    tech_info["tech_rating"] = tech_rating
     return tech_info
 
 
@@ -245,10 +255,11 @@ def save_investment_decision(company_name: str, decision: str, analysis: str) ->
     )
 
 
-def investment_decision_agent(company_name: str) -> Dict[str, Any]:
+def investment_decision_agent(state: AgentState) -> AgentState:
     """
     투자 판단 에이전트의 메인 함수
     """
+    company_name = state["selected_startup"]["name"]
     print(f"[투자 판단 에이전트] {company_name} 기업에 대한 투자 판단 시작")
     
     # 스타트업 정보와 기술 정보 조회
@@ -257,9 +268,8 @@ def investment_decision_agent(company_name: str) -> Dict[str, Any]:
     
     # 정보가 부족한 경우 처리
     if not startup_info.get("revenue") or not tech_info.get("tech_summary"):
-        print(f"[투자 판단 에이전트] {company_name} 기업 정보 부족으로 투자보류 판단")
         decision = "투자보류"
-        analysis = f"{company_name} 기업에 대한 충분한 정보가 없어 투자 판단을 할 수 없습니다. 추가 정보 수집이 필요합니다."
+        analysis = f"{company_name} 기업에 대한 충분한 정보가 없어 투자 판단을 할 수 없습니다."
     else:
         # 투자 분석 수행
         decision, analysis = analyze_investment(startup_info, tech_info)
@@ -271,17 +281,28 @@ def investment_decision_agent(company_name: str) -> Dict[str, Any]:
     
     # 결과 반환
     return {
-        "company_name": company_name,
-        "decision": decision,
-        "analysis": analysis
+        **state,
+        "investment_decision": decision,
+        "all_investment_decisions": {
+            **state.get("all_investment_decisions", {}),
+            company_name: decision
+        },
+        "processed_startups_count": state.get("processed_startups_count", 0) + 1,
+        "messages": state["messages"] + [{"role": "system", "content": f"{company_name} 투자 판단: {decision}"}]
     }
 
 
 # 단독 실행용 코드
 if __name__ == "__main__":
     # 테스트용 코드
-    test_company = "시드앤"
-    result = investment_decision_agent(test_company)
-    print(f"투자 결정: {result['decision']}")
+    test_state = {
+        "selected_startup": {"name": "시드앤"},
+        "investment_decision": None,
+        "all_investment_decisions": {},
+        "processed_startups_count": 0,
+        "messages": []
+    }
+    result = investment_decision_agent(test_state)
+    print(f"투자 결정: {result['investment_decision']}")
     print("분석 요약:")
-    print(result['analysis'][:500] + "...")  # 분석 결과 일부만 출력
+    print(result['messages'][-1]["content"])

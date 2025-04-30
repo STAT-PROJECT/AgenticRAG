@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, TypedDict, Literal
 import json
 from dotenv import load_dotenv
 import chromadb
@@ -7,6 +7,22 @@ from openai import OpenAI
 import requests
 from chromadb.utils import embedding_functions
 import time
+
+# AgentState 타입 정의
+class AgentState(TypedDict):
+    current_step: str
+    startup_list: List[Dict]
+    selected_startup: Optional[Dict]
+    startup_info: Optional[Dict]
+    tech_info: Optional[Dict]
+    market_info: Optional[Dict]
+    investment_decision: Optional[Literal["투자추천", "투자보류"]]
+    report: Optional[str]
+    all_investment_decisions: Dict[str, Literal["투자추천", "투자보류"]]
+    processed_startups_count: int
+    total_startups_count: int
+    enable_parallel: bool
+    messages: List[Dict]
 
 # .env 파일에서 API 키 로드
 load_dotenv()
@@ -188,14 +204,18 @@ def check_search_quality(search_results: str) -> bool:
     
     return True
 
-def analyze_market_position(company_name: str) -> Dict[str, Any]:
+def analyze_market_position(state: AgentState) -> AgentState:
     """
     시장 포지셔닝 및 경쟁사 분석을 종합적으로 수행합니다.
     """
+    company_name = state["selected_startup"]["name"]
     print(f"\n[시장 분석 에이전트] {company_name} 기업의 시장 포지셔닝 및 경쟁사 분석 시작")
     
     # Tavily 검색 결과
     tavily_results = get_tavily_market_data(company_name)
+    has_sufficient_data = check_search_quality(tavily_results)
+    market_analysis = generate_market_analysis(company_name, tavily_results)
+    save_market_analysis(company_name, market_analysis, has_sufficient_data)
     
     # 검색 결과 품질 평가
     has_sufficient_data = check_search_quality(tavily_results)
@@ -211,9 +231,13 @@ def analyze_market_position(company_name: str) -> Dict[str, Any]:
     save_market_analysis(company_name, market_analysis, has_sufficient_data)
     
     return {
-        "company_name": company_name,
-        "market_analysis": market_analysis,
-        "has_sufficient_data": has_sufficient_data
+        **state,
+        "market_info": {
+            "company_name": company_name,
+            "market_analysis": market_analysis,
+            "has_sufficient_data": has_sufficient_data
+        },
+        "messages": state["messages"] + [{"role": "system", "content": f"{company_name} 시장 분석 완료"}]
     }
 
 
@@ -289,17 +313,32 @@ def save_market_analysis(company_name: str, analysis: str, has_sufficient_data: 
 
 # 테스트 코드
 if __name__ == "__main__":
-    # 테스트할 회사 선택
     test_company = "레브잇(올웨이즈)"
     
-    # 시장 분석 실행
-    result = analyze_market_position(test_company)
+    # 테스트용 AgentState 객체 생성
+    test_state = {
+        "current_step": "시장_분석",
+        "startup_list": [],
+        "selected_startup": {"name": test_company},
+        "startup_info": None,
+        "tech_info": None,
+        "market_info": None,
+        "investment_decision": None, 
+        "report": None,
+        "all_investment_decisions": {},
+        "processed_startups_count": 0,
+        "total_startups_count": 1,
+        "enable_parallel": False,
+        "messages": []
+    }
+    
+    result_state = analyze_market_position(test_state)
     
     # 결과 출력
     print("\n==== 시장 분석 결과 ====\n")
-    print(result["market_analysis"])
+    print(result_state["market_info"]["market_analysis"])
     
     # 파일로 저장 (선택사항)
     with open(f"./market_analysis_output/{test_company}_market_analysis.txt", "w", encoding="utf-8") as f:
-        f.write(result["market_analysis"])
+        f.write(result_state["market_info"]["market_analysis"])
     print(f"\n결과가 {test_company}_market_analysis.txt 파일에 저장되었습니다.")

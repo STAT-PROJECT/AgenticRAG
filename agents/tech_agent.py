@@ -18,15 +18,17 @@ class AgentState(TypedDict):
     selected_startup: Optional[Dict]
     startup_info: Optional[Dict]
     tech_info: Optional[Dict]
+    market_info: Optional[Dict]  # 이 필드 추가
     investment_decision: Optional[Literal["투자추천", "투자보류"]]
     report: Optional[str]
     all_investment_decisions: Dict[str, Literal["투자추천", "투자보류"]]
     processed_startups_count: int
     total_startups_count: int
+    enable_parallel: bool  # 이 필드 추가
     messages: List[Dict]
 
 # 🔍 기술 요약 파이프라인
-def tech_exploration(state: AgentState, save_txt: bool = True) -> AgentState:
+def tech_exploration(state: AgentState, save_txt: bool = False) -> AgentState:
     company = state["selected_startup"]["name"]
     search = TavilySearchResults(k=5)
     results = search.run(f"{company} 기술력 OR 핵심 기술 OR AI OR IoT OR 특허")
