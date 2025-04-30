@@ -8,6 +8,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 from langchain_community.tools.tavily_search import TavilySearchResults
 from dotenv import load_dotenv
+from typing import Dict, Any
 
 load_dotenv()
 
@@ -115,7 +116,7 @@ def get_web_news_fallback(query: str, k: int = 2) -> list[Document]:
     ]
 
 
-def collect_startup_info(state: AgentState) -> AgentState:
+def collect_startup_info(state: Dict[str, Any]) -> Dict[str, Any]:
     startup = state["selected_startup"]
     if not startup:
         raise ValueError("선택된 스타트업 정보가 없습니다.")

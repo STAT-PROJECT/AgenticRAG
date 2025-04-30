@@ -15,11 +15,13 @@ class AgentState(TypedDict):
     selected_startup: Optional[Dict]
     startup_info: Optional[Dict]
     tech_info: Optional[Dict]
+    market_info: Optional[Dict]  # 이 필드 추가
     investment_decision: Optional[Literal["투자추천", "투자보류"]]
     report: Optional[str]
     all_investment_decisions: Dict[str, Literal["투자추천", "투자보류"]]
     processed_startups_count: int
     total_startups_count: int
+    enable_parallel: bool  # 이 필드 추가
     messages: List[Dict]
 
 def clean_html_text(html: str) -> str:
@@ -48,7 +50,7 @@ def clean_html_text(html: str) -> str:
 def tech_exploration(state: AgentState, save_txt: bool = True) -> AgentState:
     company = state["selected_startup"]["name"]
     search = TavilySearchResults(k=5)
-    results = search.run(f"{company}의 핵심 기술, AI 또는 IoT 관련 기술력, 그리고 특허 기술에 대해 알고싶어")
+    results = search.run(f"{company}의 핵심 기술, AI 또는 IoT 관련 기술력, 그리고 특허 기술에 대해 알려줘")
     urls = [r["url"] for r in results]
 
     loader = WebBaseLoader(urls)

@@ -1,0 +1,58 @@
+2025-04-30 14:18:28,543 - INFO - 애플리케이션 시작
+2025-04-30 14:20:00,921 - INFO - 애플리케이션 시작
+2025-04-30 14:20:00,926 - INFO - 진행 상황 저장됨: progress/startup_selection_2025-04-30_14-20-00.json
+2025-04-30 14:20:00,926 - INFO - 라우터: 현재 단계 '스타트업_선택'에서 다음 단계 결정
+2025-04-30 14:20:00,927 - INFO - 라우터: 현재 단계 '스타트업_선택'에서 다음 단계 결정
+2025-04-30 14:23:09,595 - INFO - 애플리케이션 시작
+2025-04-30 14:25:45,095 - INFO - 애플리케이션 시작
+2025-04-30 14:25:45,100 - INFO - 진행 상황 저장됨: progress/startup_selection_2025-04-30_14-25-45.json
+2025-04-30 14:25:51,121 - INFO - Use pytorch device_name: mps
+2025-04-30 14:25:51,121 - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-30 14:25:55,730 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-04-30 14:26:01,045 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:02,946 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:04,388 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:05,719 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:07,049 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:09,426 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:34,439 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:48,222 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:26:48,568 - INFO - 진행 상황 저장됨: progress/parallel_analysis_2025-04-30_14-26-48.json
+2025-04-30 14:30:25,252 - INFO - 애플리케이션 시작
+2025-04-30 14:30:25,257 - INFO - 진행 상황 저장됨: progress/startup_selection_2025-04-30_14-30-25.json
+2025-04-30 14:30:29,075 - INFO - Use pytorch device_name: mps
+2025-04-30 14:30:29,075 - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-30 14:30:31,625 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-04-30 14:30:35,570 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:30:37,306 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:30:38,638 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:30:39,771 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:30:41,060 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:30:42,332 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:30:58,668 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:31:12,435 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:31:12,794 - INFO - 진행 상황 저장됨: progress/parallel_analysis_2025-04-30_14-31-12.json
+2025-04-30 14:34:18,648 - INFO - 애플리케이션 시작
+2025-04-30 14:34:18,653 - INFO - 진행 상황 저장됨: progress/startup_selection_2025-04-30_14-34-18.json
+2025-04-30 14:34:22,688 - INFO - Use pytorch device_name: mps
+2025-04-30 14:34:22,688 - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-30 14:34:25,860 - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+2025-04-30 14:34:29,190 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:34:30,741 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:34:32,235 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:34:33,905 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:34:35,103 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:34:36,559 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:34:51,019 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:35:05,233 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:35:05,644 - INFO - 진행 상황 저장됨: progress/parallel_analysis_2025-04-30_14-35-05.json
+2025-04-30 14:35:05,880 - INFO - 정보 완전성 검증 중...
+2025-04-30 14:35:05,880 - INFO - 기술 정보 부족: 기술 탐색 단계로 회귀
+2025-04-30 14:35:09,068 - INFO - Use pytorch device_name: mps
+2025-04-30 14:35:09,068 - INFO - Load pretrained SentenceTransformer: sentence-transformers/all-MiniLM-L6-v2
+2025-04-30 14:35:14,041 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:35:16,089 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:35:17,337 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:35:18,551 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:35:19,773 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-04-30 14:35:21,512 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"

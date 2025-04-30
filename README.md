@@ -90,18 +90,20 @@ ChromaDB를 활용하여 다음과 같은 스키마로 데이터 저장:
 ## Directory Structure
 
 ```
-├── data/                  # 스타트업 PDF 문서
-├── agents/                # 평가 기준별 Agent 모듈
-│   ├── startup_agent.py   # 스타트업 탐색 에이전트
-│   ├── info_agent.py      # 정보 수집 에이전트
-│   ├── tech_agent.py      # 기술 탐색 에이전트
-│   ├── market_agent.py    # 시장 분석 에이전트
-│   ├── invest_agent.py    # 투자 판단 에이전트
-│   └── report_agent.py    # 보고서 생성 에이전트
-├── prompts/               # 프롬프트 템플릿
-├── outputs/               # 평가 결과 저장
-├── main.py                # 메인 실행 스크립트
-└── README.md
+.
+├── agents/
+│   ├── company_info_agent.py  # PDF에서 스타트업 정보 추출
+│   ├── tech_agnet.py         # 기술 정보 탐색 및 요약
+│   ├── market_agent.py       # 시장 분석 및 경쟁사 정보 수집
+│   ├── invest_agent.py       # 투자 결정 판단
+│   └── report_agent.py       # 최종 보고서 생성
+├── chroma_store/             # 벡터 DB 저장소
+├── data/                     # 스타트업 PDF 문서 저장
+├── market_analysis_output/   # 시장 분석 결과 저장
+├── prompts/                  # 프롬프트 템플릿
+├── .env                      # 환경 변수(API 키 등)
+├── app.py                    # 메인 애플리케이션(현재 비어있음)
+└── README.md                 # 프로젝트 설명서
 ```
 
 ## Contributors 
