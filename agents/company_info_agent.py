@@ -13,7 +13,7 @@ from typing import TypedDict, List, Dict, Optional, Literal
 from langgraph.graph import StateGraph
 from langchain_openai import ChatOpenAI
 from bs4 import BeautifulSoup 
-
+from typing import Dict, Any
 class AgentState(TypedDict):
     current_step: str
     startup_list: List[Dict]
@@ -26,6 +26,9 @@ class AgentState(TypedDict):
     processed_startups_count: int
     total_startups_count: int
     messages: List[Dict]
+
+
+
 
 load_dotenv()
 
@@ -178,7 +181,7 @@ def get_web_news_docs(company: str, save_txt: bool = True) -> list[Document]:
     return news_docs
 
 
-def collect_startup_info(state: AgentState) -> AgentState:
+def collect_startup_info(state: Dict[str, Any]) -> Dict[str, Any]:
     startup = state["selected_startup"]
     if not startup:
         raise ValueError("선택된 스타트업 정보가 없습니다.")

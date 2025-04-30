@@ -8,3 +8,10 @@ __pycache__/
 .venv/
 .env
 .ipynb
+
+.env
+venv
+chroma_store
+text_backup
+./chroma_store/
+chroma_store/
