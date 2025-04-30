@@ -2,3 +2,5 @@
 venv
 chroma_store
 text_backup
+./chroma_store/
+chroma_store/
