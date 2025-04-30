@@ -14,6 +14,7 @@
 - 다중 에이전트 기반 종합 분석 (기술력, 재무, 성장성 등)
 - 투자 기준별 판단 분류 및 근거 제시
 - 투자 보고서 자동 생성 (투자추천/투자보류)
+- 진행 상황 시각화 및 로깅
 
 ## Tech Stack 
 
@@ -21,7 +22,8 @@
 |------------|------------------------------|
 | Framework  | LangGraph, LangChain, Python |
 | LLM        | GPT-4o-mini via OpenAI API   |
-| Retrieval  | ChromaDB                     |
+| VectorDB   | ChromaDB                     |
+|임베딩      | HuggingFace (ko-sroberta-multitask)|
 | Data       | PDF OCR(PyMuPDFLoader), Web Search(Tavily) |
 
 ## Agents
@@ -37,7 +39,7 @@
 
 ```
                       ┌───────────────┐
-                      │  스타트업_탐색   │◄─────────────┐
+                      │  스타트업_선택   │◄─────────────┐
                       └───────┬───────┘              │
                               │                      │
                               ▼                      │
@@ -75,34 +77,45 @@
            ▼                                   
 ┌────────────────────────┐                     
 │        완료            │                     
-└────────────────────────┘                   
+└────────────────────────┘                        
 ```
 
 ## Vector Database Schema
 
-ChromaDB를 활용하여 다음과 같은 스키마로 데이터 저장:
+ChromaDB를 활용한 메타데이터 구조:
 
-- **startup_agent**: 기업명, 매출, 성장률, 투자유치, 고용인원, 특허 등 기본 정보
-- **tech_agent**: 기업의 핵심 기술 정보 및 기술력 분석
-- **market_agent**: 시장 포지셔닝, 경쟁사 정보, 경쟁 우위 요소, 시장 점유율, 위협 요소
-- **invest_agent**: 투자 판단 결과 및 판단 근거
+- 공통 필드:
+    - company_name: 스타트업 이름 (모든 문서 공통)
+    - agent_type: 에이전트 유형 (startup_agent, tech_agent, market_agent, invest_agent)
+
+- **startup_agent**: 기업 기본 정보 (PDF 존재 여부, 텍스트 경로 등)
+- **tech_agent**: 기술 요약, 신뢰도 점수, 참조 URL
+- **market_agent**: 시장 분석 결과, 충분성 여부, 경쟁사 정보
+- **invest_agent**: 투자 판단 결과 (투자추천/투자보류), 판단 근거
 
 ## Directory Structure
 
 ```
 .
 ├── agents/
-│   ├── company_info_agent.py  # PDF에서 스타트업 정보 추출
-│   ├── tech_agnet.py         # 기술 정보 탐색 및 요약
+│   ├── company_info_agent.py  # PDF 정보 추출 및 웹 검색
+│   ├── tech_agent.py         # 기술 탐색 및 요약
 │   ├── market_agent.py       # 시장 분석 및 경쟁사 정보 수집
 │   ├── invest_agent.py       # 투자 결정 판단
-│   └── report_agent.py       # 최종 보고서 생성
+│   ├── report_agent.py       # 최종 보고서 생성
+│   └── startup_agent.py      # 스타트업 크롤링
+├── app.py                    # 메인 워크플로우 애플리케이션
 ├── chroma_store/             # 벡터 DB 저장소
 ├── data/                     # 스타트업 PDF 문서 저장
+│   └── outputs/              # 정보 추출 결과
 ├── market_analysis_output/   # 시장 분석 결과 저장
+├── progress/                 # 워크플로우 진행 상태 저장
 ├── prompts/                  # 프롬프트 템플릿
+├── reports/                  # 생성된 보고서 저장
+├── startup_list_*.csv        # 크롤링된 스타트업 목록
+├── visualizations/           # 워크플로우 시각화 이미지
+├── workflow.log              # 로그 파일
 ├── .env                      # 환경 변수(API 키 등)
-├── app.py                    # 메인 애플리케이션(현재 비어있음)
 └── README.md                 # 프로젝트 설명서
 ```
 
@@ -111,5 +124,5 @@ ChromaDB를 활용하여 다음과 같은 스키마로 데이터 저장:
 - **김경아**: 스타트업 탐색 에이전트
 - **박정의**: 기술 탐색 및 핵심 기술 요약 에이전트
 - **배진환**: 투자 판단 에이전트
-- **이원행**: 시장 분석 및 보고서 생성 에이전트
+- **이원행**: 시장 분석 및 보고서 생성 에이전트, LangGraph
 - **정현섭**: 프로젝트 코디네이션 및 구조 설계
