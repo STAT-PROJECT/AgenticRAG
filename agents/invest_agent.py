@@ -2,13 +2,12 @@
 투자 판단 에이전트 - 스타트업의 재무, 기술, 성장성 등을 종합적으로 분석하여 투자 결정을 내림
 """
 import os
-from typing import Dict, Any, List, Tuple, Literal
+from typing import Dict, Any, Tuple
 from dotenv import load_dotenv
 import chromadb
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-import json
 
 # .env 파일에서 OpenAI API 키 로드
 load_dotenv()
@@ -34,10 +33,10 @@ def get_startup_info(company_name: str) -> Dict[str, Any]:
     """
     results = collection.query(
         query_texts=[company_name],
-        where={
-            "agent_type": "startup_agent",
-            "company_name": company_name
-        },
+        where={"$and": [
+            {"agent_type": {"$eq": "startup_agent"}},
+            {"company_name": {"$eq": company_name}}
+        ]},
         n_results=10
     )
     
@@ -75,10 +74,10 @@ def get_tech_info(company_name: str) -> Dict[str, Any]:
     """
     results = collection.query(
         query_texts=[company_name],
-        where={
-            "agent_type": "tech_agent",
-            "company_name": company_name
-        },
+        where={"$and": [
+            {"agent_type": {"$eq": "tech_agent"}},
+            {"company_name": {"$eq": company_name}}
+        ]},
         n_results=5
     )
     
@@ -91,7 +90,15 @@ def get_tech_info(company_name: str) -> Dict[str, Any]:
     }
     
     if results["documents"] and len(results["documents"]) > 0:
-        tech_info["tech_summary"] = "\n".join(results["documents"])
+        # 중첩 리스트 처리 - results["documents"]가 리스트의 리스트 형태인 경우
+        documents = []
+        for doc_item in results["documents"]:
+            if isinstance(doc_item, list):
+                documents.extend(doc_item)  # 내부 리스트의 항목들을 추가
+            else:
+                documents.append(doc_item)  # 단일 문자열인 경우 직접 추가
+        
+        tech_info["tech_summary"] = "\n".join(documents)
         
         # 메타데이터에서 추가 기술 정보 추출
         for metadata in results["metadatas"]:
