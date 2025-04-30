@@ -1,13 +1,31 @@
 from langchain_community.document_loaders import PyMuPDFLoader
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.documents import Document
 from langchain_community.vectorstores import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 from langchain_community.tools.tavily_search import TavilySearchResults
 from dotenv import load_dotenv
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_openai import ChatOpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
+from typing import TypedDict, List, Dict, Optional, Literal
+from langgraph.graph import StateGraph
+from langchain_openai import ChatOpenAI
+from bs4 import BeautifulSoup 
+
+class AgentState(TypedDict):
+    current_step: str
+    startup_list: List[Dict]
+    selected_startup: Optional[Dict]
+    startup_info: Optional[Dict]
+    tech_info: Optional[Dict]
+    investment_decision: Optional[Literal["투자추천", "투자보류"]]
+    report: Optional[str]
+    all_investment_decisions: Dict[str, Literal["투자추천", "투자보류"]]
+    processed_startups_count: int
+    total_startups_count: int
+    messages: List[Dict]
 
 load_dotenv()
 
@@ -74,7 +92,7 @@ def store_in_chroma(documents: list[Document], collection_name: str, persist_dir
     # 벡터 저장소에 문서 저장
     chroma = Chroma.from_documents(
         documents=documents,
-        embedding=OpenAIEmbeddings(),
+        embedding=HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2"),
         persist_directory=persist_dir,
         collection_name=collection_name,
         ids=ids
@@ -100,19 +118,64 @@ def save_structured_text_to_file(startup_name: str, structured_text: str, web_ne
 
     return output_path
 
-# 웹서치 도구를 통해 최신 뉴스 결과를 가져와 Document 형태로 반환
-def get_web_news_fallback(query: str, k: int = 2) -> list[Document]:
-    search = TavilySearchResults(k=k)
-    results = search.invoke(query)
-    return [
-        Document(
-            page_content=f"{item.get('content')}\n\n링크: {item.get('url')}",
-            metadata={"type": "웹서치", "source": query, "agent_type": "startup_agent", "company_name": query.split()[0]}
-        )
-        
-        
-        for item in results
+def clean_html_text(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    text = soup.get_text(separator="\n")
+
+    # 불필요한 패턴 필터링
+    filters = [
+        "무단 전재 및 재배포 금지",
+        "저작권자",
+        "관련기사",
+        "SNS 공유하기",
+        "광고 문의",
+        "네이버 홈",
+        "All rights reserved", "무단복제", 
+        "기자의 다른 기사 보기", "기사제보", "페이스북", "트위터", "카카오스토리", 
+        "네이버 뉴스", "본문 시작", "기사 본문", "닫기"
     ]
+    for pattern in filters:
+        text = text.replace(pattern, "")
+    
+    # 공백 정리
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    return "\n".join(lines)
+
+def get_web_news_docs(company: str, save_txt: bool = True) -> list[Document]:
+    search = TavilySearchResults(k=5)
+    results = search.run(f"{company} 관련 뉴스 OR 보도자료")
+    urls = [r["url"] for r in results]
+
+    loader = WebBaseLoader(urls)
+    docs = loader.load()
+
+    texts = [clean_html_text(doc.page_content) for doc in docs]
+
+    llm = ChatOpenAI(temperature=0.2)
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
+    summaries = []
+    for text in texts:
+        msg = llm.invoke(f"{text}\n\n이 뉴스 내용을 핵심 내용이 누락되지 않게 요약해줘.")
+        summaries.append(msg.content)
+
+    news_docs = [
+        Document(page_content=s, metadata={
+            "agent_type": "news_summary",
+            "company_name": company,
+            "source": urls[i] if i < len(urls) else "unknown"
+        }) for i, s in enumerate(summaries)
+    ]
+
+    if save_txt:
+        os.makedirs("data/outputs", exist_ok=True)
+        vector_txt_path = f"data/outputs/{company}_news_vector_content.txt"
+        with open(vector_txt_path, "w", encoding="utf-8") as f:
+            for i, d in enumerate(news_docs, 1):
+                f.write(f"[{i}] {d.metadata.get('agent_type')} | {d.metadata.get('company_name')}\n{d.page_content}\n\n")
+        print(f"뉴스 백업 저장 완료: {vector_txt_path}")
+
+    return news_docs
 
 
 def collect_startup_info(state: AgentState) -> AgentState:
@@ -134,8 +197,9 @@ def collect_startup_info(state: AgentState) -> AgentState:
     raw_text = load_pdf_text(pdf_path)
     structured_text = extract_structured_info(raw_text)
 
-    # 2. 웹 뉴스
-    web_news_docs = get_web_news_fallback(f"{startup_name} 스타트업 뉴스")
+    # 2. 뉴스 수집 및 요약
+    web_news_docs = get_web_news_docs(startup_name)  # 수정된 함수로 실행
+
 
     # 3. 저장
     text_path = save_structured_text_to_file(startup_name, structured_text, web_news_docs)
@@ -155,11 +219,16 @@ def collect_startup_info(state: AgentState) -> AgentState:
     }
 
 if __name__ == "__main__":
-    # 테스트용 입력 상태 정의
+    from pprint import pprint
+
+    # 테스트 기업명 (한글 이름 기준)
+    company_name = "씨드앤"
+
+    # 테스트용 상태 정의
     test_state = {
         "current_step": "스타트업_정보_수집",
-        "startup_list": [{"name": "seedn"}],
-        "selected_startup": {"name": "seedn"},
+        "startup_list": [{"name": company_name}],
+        "selected_startup": {"name": company_name},
         "messages": [],
         "startup_info": None,
         "tech_info": None,
@@ -170,12 +239,13 @@ if __name__ == "__main__":
         "total_startups_count": 1,
     }
 
-    # 함수 실행
-    new_state = collect_startup_info(test_state)
+    # 실행
+    updated_state = collect_startup_info(test_state)
 
-    # 결과 출력
-    from pprint import pprint
-    pprint(new_state["startup_info"])
-    print("메시지 로그:")
-    for msg in new_state["messages"]:
+    # 출력
+    print("\n수집 완료된 startup_info:")
+    pprint(updated_state["startup_info"])
+
+    print("\n메시지 로그:")
+    for msg in updated_state["messages"]:
         print(f"{msg['role']}: {msg['content']}")
