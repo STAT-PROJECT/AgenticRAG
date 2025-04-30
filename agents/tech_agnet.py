@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 from langchain.schema import Document
-from bs4 import BeautifulSoup  # ✅ 추가
+from bs4 import BeautifulSoup
 import os
 import uuid
 from typing import TypedDict, List, Dict, Optional, Literal
@@ -48,7 +48,7 @@ def clean_html_text(html: str) -> str:
 def tech_exploration(state: AgentState, save_txt: bool = True) -> AgentState:
     company = state["selected_startup"]["name"]
     search = TavilySearchResults(k=5)
-    results = search.run(f"{company} 기술력 OR 핵심 기술 OR AI OR IoT OR 특허")
+    results = search.run(f"{company}의 핵심 기술, AI 또는 IoT 관련 기술력, 그리고 특허 기술에 대해 알고싶어")
     urls = [r["url"] for r in results]
 
     loader = WebBaseLoader(urls)
@@ -108,7 +108,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
 
-    company_name = "뤼튼"
+    company_name = "프리윌린"
     test_state = {
         "current_step": "기술_탐색_요약",
         "startup_list": [],
