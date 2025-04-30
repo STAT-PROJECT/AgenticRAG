@@ -2,13 +2,12 @@
 투자 판단 에이전트 - 스타트업의 재무, 기술, 성장성 등을 종합적으로 분석하여 투자 결정을 내림
 """
 import os
-from typing import Dict, Any, List, Tuple, Literal, TypedDict, Optional
+from typing import Dict, Any, Tuple
 from dotenv import load_dotenv
 import chromadb
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
-import json
 
 # AgentState 타입 정의
 class AgentState(TypedDict):
@@ -42,12 +41,10 @@ def get_startup_info(company_name: str) -> Dict[str, Any]:
     """
     results = collection.query(
         query_texts=[company_name],
-        where={
-            "$and": [
-                {"agent_type": "startup_agent"},
-                {"company_name": company_name}
-            ]
-        },
+        where={"$and": [
+            {"agent_type": {"$eq": "startup_agent"}},
+            {"company_name": {"$eq": company_name}}
+        ]},
         n_results=10
     )
     
@@ -85,12 +82,10 @@ def get_tech_info(company_name: str) -> Dict[str, Any]:
     """
     results = collection.query(
         query_texts=[company_name],
-        where={
-            "$and": [
-                {"agent_type": "tech_agent"},
-                {"company_name": company_name}
-            ]
-        },
+        where={"$and": [
+            {"agent_type": {"$eq": "tech_agent"}},
+            {"company_name": {"$eq": company_name}}
+        ]},
         n_results=5
     )
     
@@ -106,7 +101,7 @@ def get_tech_info(company_name: str) -> Dict[str, Any]:
             flattened_documents.extend(doc_list)  # 리스트인 경우 풀어서 추가
         else:
             flattened_documents.append(doc_list)  # 문자열인 경우 그대로 추가
-            
+       
     tech_info["tech_summary"] = "\n".join(flattened_documents)
     
     # 메타데이터에서 기술 등급 추출 (기존 코드 유지)
@@ -119,7 +114,7 @@ def get_tech_info(company_name: str) -> Dict[str, Any]:
                     break
         elif meta.get("tech_rating"):
             tech_rating = meta.get("tech_rating")
-    
+ 
     tech_info["tech_rating"] = tech_rating
     return tech_info
 
